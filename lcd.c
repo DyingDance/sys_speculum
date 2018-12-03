@@ -24,7 +24,7 @@ int lcd_send( libusb_device_handle *handle , uint16_t request, uint16_t value, u
 {
         //if( libusb_control_transfer( handle , ( LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_OUT ) , request , value , index , NULL , 0 , 0 ) < 0 ) {
         if( libusb_control_transfer( handle , LIBUSB_REQUEST_TYPE_VENDOR , request , value , index , NULL , 0 , 500 ) < 0) {
-                printf("Send data no OK! \n");
+                /* printf("Send data no OK! \n"); */
                 return -1;
         }
         //printf("Send data OK! \n");	//for test

@@ -5,6 +5,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <libusb-1.0/libusb.h>
+#include <sys/time.h>
 
 #include "sysmon.h"
 #include "lcd.h"
@@ -13,6 +14,11 @@
 #define NUMB_OF_LINES 2
 
 char ip_addr[INET_ADDRSTRLEN] ;
+
+struct timeval timeout = {
+    .tv_sec = 1 ,
+    .tv_usec = 0 ,
+} ;
 
 static lcd_device JQMUC = {
      .device_name = "HD44780 LCD USB Module" ,
@@ -41,7 +47,6 @@ static lcd_parament J_param = {
 
 static int init_speculum ( peep_instance *instance )
 {
-    instance->speculum_life_cycle = chaos ;
     instance->lcd_dev = &JQMUC ;
     instance->lcd_dev->lcd_param = &J_param ;
     instance->lcd_dev->lcd_param->num_of_chars = instance->lcd_dev->lcd_param->rows *
@@ -50,7 +55,23 @@ static int init_speculum ( peep_instance *instance )
     instance->lcd_dev->buf->buffer_type = -1 ;
     instance->lcd_dev->buf->buffer_fill = 0 ;
     instance->lcd_dev->buf->show_buf = (char *)calloc( BUFFER_MAX_CMD , sizeof (char)) ;
+
+    instance->speculum_life_cycle = chaos ;
     printf ( "instance initialized , waiting for usb device...\n" ) ;
+    return 0 ;
+}
+
+
+static int destory_speculum ( peep_instance **instance )
+{
+    peep_instance *usb_lcd = *instance ;
+    if ( usb_lcd != NULL ) {
+        if ( usb_lcd->lcd_dev->buf != NULL ) {
+            if ( usb_lcd->lcd_dev->buf->show_buf ) free ( usb_lcd->lcd_dev->buf->show_buf ) ;
+            free ( usb_lcd->lcd_dev->buf ) ;
+        }
+        free ( usb_lcd ) ;
+    }
     return 0 ;
 }
 
@@ -71,9 +92,7 @@ static int LIBUSB_CALL hotplug_callback( libusb_context *ctx ,
 		libusb_close ( (( peep_instance *)user_data )->lcd_dev->lcd_usb_handle ) ;
 		(( peep_instance *)user_data )->lcd_dev->lcd_usb_handle = NULL ;
 	}
-#if 1
     (( peep_instance *)user_data)->speculum_life_cycle = born ;
-#endif
 	return 0;
 }
 
@@ -95,9 +114,8 @@ static int LIBUSB_CALL hotplug_callback_detach( libusb_context *ctx ,
 int main( void )
 {
     int status = 0 ;
-    char first_line[NUMB_OF_CHARS_IN_A_LINE+1] ;
-    char second_line[NUMB_OF_CHARS_IN_A_LINE+1] ;
-#if 1
+    unsigned char first_line[NUMB_OF_CHARS_IN_A_LINE+1] ;
+    unsigned char second_line[NUMB_OF_CHARS_IN_A_LINE+1] ;
     peep_instance *usb_lcd ;
     usb_lcd = (peep_instance *)malloc( sizeof ( peep_instance ) ) ;
     if ( usb_lcd == NULL ) {
@@ -171,7 +189,7 @@ int main( void )
                     usb_lcd->speculum_life_cycle = inoculation ;
                 }
 #if 0
-               printf ( "usb context cached , waiting for speculum plug in...\n" ) ;
+                printf ( "usb context cached , waiting for speculum plug in...\n" ) ;
                 usb_lcd->speculum_life_cycle = inoculation ;
 #endif
                 break ;
@@ -183,10 +201,11 @@ error:
                 break ;
 
             case inoculation :
-                    printf ( "waiting for speculum plug in...\n" ) ;
-                    status = libusb_handle_events ( usb_lcd->lib_ctx ) ;
-                    if ( status < 0 )
-                      printf ( "libusb_handle_events() failed: %s\n", libusb_error_name( status )) ;
+                printf ( "waiting for speculum plug in...\n" ) ;
+                status = libusb_handle_events ( usb_lcd->lib_ctx ) ;
+                /* status = libusb_handle_events_timeout ( usb_lcd->lib_ctx , &timeout ) ; */
+                if ( status < 0 )
+                  printf ( "libusb_handle_events() failed: %s\n", libusb_error_name( status )) ;
                 /* sleep ( 2 ) ; */
                 break ;
 
@@ -210,10 +229,8 @@ error:
                 snprintf (second_line , NUMB_OF_CHARS_IN_A_LINE+1 , "cpu temp: %2.2f digC" , cpu_temp() ) ;
                 lcd_clear_scr( usb_lcd->lcd_dev ) ;
                 lcd_setpos( usb_lcd->lcd_dev , 0, 0 ) ;
-                /* DISPLAYDLL_Write( first_line ) ; */
                 lcd_write ( usb_lcd->lcd_dev , first_line ) ;
                 lcd_setpos( usb_lcd->lcd_dev , 0, 1) ;
-                /* DISPLAYDLL_Write( second_line ) ; */
                 lcd_write ( usb_lcd->lcd_dev , second_line ) ;
                 sleep( 2 ) ;
                 sleep( 2 ) ;
@@ -224,64 +241,27 @@ error:
                 }
                 lcd_clear_scr( usb_lcd->lcd_dev ) ;
                 lcd_setpos( usb_lcd->lcd_dev , 0, 0);
-                /* DISPLAYDLL_Write("ip address"); */
                 lcd_write ( usb_lcd->lcd_dev , "ip address" ) ;
                 lcd_setpos( usb_lcd->lcd_dev , 0, 1 ) ;
-                /* DISPLAYDLL_Write( second_line ); */
                 lcd_write ( usb_lcd->lcd_dev , second_line ) ;
                 /* sleep(2); */
                 /* sleep(2); */
-                status = libusb_handle_events ( usb_lcd->lib_ctx ) ;
+                /* status = libusb_handle_events ( usb_lcd->lib_ctx ) ; */
+                status = libusb_handle_events_timeout ( usb_lcd->lib_ctx , &timeout ) ;
                 if ( status < 0 )
                   printf ( "libusb_handle_events() failed: %s\n", libusb_error_name( status )) ;
                 break ;
 
             default :   /* some thing wrong here */
                 if ( usb_lcd->lcd_dev->lcd_usb_handle ) libusb_close ( usb_lcd->lcd_dev->lcd_usb_handle ) ;
-                /* libusb_exit ( usb_lcd->lib_ctx ) ; */
-                libusb_exit ( NULL ) ;
-                usb_lcd->speculum_life_cycle = born ;
+                if ( usb_lcd->lib_ctx ) {
+                    if ( usb_lcd->hp[0] ) libusb_hotplug_deregister_callback ( usb_lcd->lib_ctx , usb_lcd->hp[0] ) ; 
+                    if ( usb_lcd->hp[1] ) libusb_hotplug_deregister_callback ( usb_lcd->lib_ctx , usb_lcd->hp[1] ) ;
+                    libusb_exit ( usb_lcd->lib_ctx ) ;
+                }
+                usb_lcd->speculum_life_cycle = chaos ;
                 break ;
-    }
-    } while ( 1 ) ;
-
-#else
-    status = DISPLAYDLL_Init( NUMB_OF_CHARS_IN_A_LINE , NUMB_OF_LINES ) ;
-    if( status == 0 )
-    {
-        printf("USB INTERFACE IS OPEN \n");
-        lcd_display_on();
-        lcd_ContrastSet(50);
-        Set_Backlight(100);
-        while ( 1 ) {
-            snprintf (first_line , NUMB_OF_CHARS_IN_A_LINE+1 , "cpu load: %3.2f%%" , cpu_usage() ) ;
-            snprintf (second_line , NUMB_OF_CHARS_IN_A_LINE+1 , "cpu temp: %2.2f digC" , cpu_temp() ) ;
-            lcd_cleardisplay();
-            lcd_setpos( 0, 0);
-            DISPLAYDLL_Write( first_line ) ;
-            lcd_setpos( 0, 1);
-            DISPLAYDLL_Write( second_line ) ;
-            sleep(2);
-            sleep(2);
-            if ( ipv4_address ( ip_addr ) == 0 ) {
-                snprintf ( second_line , NUMB_OF_CHARS_IN_A_LINE+1 , ip_addr ) ;
-            } else {
-                sprintf ( second_line , "127.0.0.1" ) ;
-            }
-            lcd_cleardisplay();
-            lcd_setpos( 0, 0);
-            DISPLAYDLL_Write("ip address");
-            lcd_setpos( 0, 1);
-            DISPLAYDLL_Write( second_line );
-            sleep(2);
-            sleep(2);
         }
-    }
-    else
-    {
-        DISPLAYDLL_Done();
-        printf("Could not open USB device,Error \n");
-
-    }
-#endif
+    } while ( 1 ) ;
+    destory_speculum ( &usb_lcd ) ;
 }
