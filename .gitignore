@@ -1,0 +1,27 @@
+# Compiled Object files
+*.lo
+*.o
+*.obj
+.DS_Store
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+#CLion project files
+.idea
+
+#debug tmp files
+cscope.*
+tags
+*.vim
+.viminfo
+temp
+*.log
