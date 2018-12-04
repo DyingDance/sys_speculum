@@ -134,6 +134,38 @@ int ipv4_address( char *address_buffer )
     return -1 ;
 }
 
+int core_clock ( int cluster , char* clock_freq )
+{
+    FILE *fp ;
+    char buf[128] ;
+    char frequen[16] ; 
+    long  cur_freq ;
+    float xGMHz ;
+
+    sprintf( buf , CORE_CLOCK , cluster ) ;
+    fp = fopen ( buf , "r") ;
+    if ( fp == NULL ) 
+    {
+        perror( "fopen:" ) ;
+        return ( -1 ) ;
+    }
+    fgets( frequen , sizeof( frequen ) , fp ) ;
+    fclose( fp ) ;
+    sscanf ( frequen , "%ld" , &cur_freq ) ;
+    if ( cur_freq / 1000000 > 0 ) {
+       xGMHz = ( float )cur_freq / 1000000 ;
+       /* sprintf ( frequen , "%1.3fGHz" , xGMHz ) ; */
+       /* snprintf ( clock_freq , 14 , frequen ) ; */
+       snprintf ( clock_freq , 14 , "%.3fGHz" , xGMHz ) ;
+    } else {
+       xGMHz = ( float )cur_freq /1000 ;
+       /* sprintf ( frequen , "%fMHz" , xGMHz ) ; */
+       /* snprintf ( clock_freq , 14 , frequen ) ; */
+       snprintf ( clock_freq , 14 , "%.3fMHz" , xGMHz ) ;
+    }
+    return 0 ;
+}
+
 int sys_boot_time ( char * boot_up_time )
 {
     struct sysinfo info;

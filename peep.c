@@ -273,6 +273,22 @@ error:
 
             case connected:
                 printf ( "waiting for speculum pull out...\n" ) ;
+                if ( core_clock ( 0 , second_line ) == 0 ) {
+                    lcd_clear_scr( usb_lcd->lcd_dev ) ;
+                    lcd_setpos( usb_lcd->lcd_dev , 0, 0);
+                    lcd_write ( usb_lcd->lcd_dev , "A53 core clock:" ) ;
+                    lcd_setpos( usb_lcd->lcd_dev , 0, 1 ) ;
+                    lcd_write ( usb_lcd->lcd_dev , second_line ) ;
+                }
+                sleep( 3 ) ;
+                if ( core_clock ( 4 , second_line ) == 0 ) {
+                    lcd_clear_scr( usb_lcd->lcd_dev ) ;
+                    lcd_setpos( usb_lcd->lcd_dev , 0, 0);
+                    lcd_write ( usb_lcd->lcd_dev , "A72 core clock:" ) ;
+                    lcd_setpos( usb_lcd->lcd_dev , 0, 1 ) ;
+                    lcd_write ( usb_lcd->lcd_dev , second_line ) ;
+                }
+                sleep( 3 ) ;
                 if ( sys_boot_time ( second_line ) == 0 ) {
                     lcd_clear_scr( usb_lcd->lcd_dev ) ;
                     lcd_setpos( usb_lcd->lcd_dev , 0, 0);
