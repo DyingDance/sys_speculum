@@ -6,6 +6,11 @@
 #include <arpa/inet.h>
 #include <libusb-1.0/libusb.h>
 #include <sys/time.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <error.h>
+#include <signal.h>
+#include <sys/stat.h>
 
 #include "sysmon.h"
 #include "lcd.h"
@@ -117,6 +122,49 @@ int main( void )
     unsigned char first_line[NUMB_OF_CHARS_IN_A_LINE+1] ;
     unsigned char second_line[NUMB_OF_CHARS_IN_A_LINE+1] ;
     peep_instance *usb_lcd ;
+
+#if 1
+    pid_t i ;
+    int fd ;
+    i = fork() ;
+    if ( i < 0 ) {
+        printf( "fork() failed: %s" , strerror( errno ) ) ;
+        exit( 1 ) ;
+    }
+    if ( i != 0 ) exit( 0 ) ;
+
+    /* ignore nasty signals */
+    signal( SIGINT , SIG_IGN ) ;
+    signal( SIGQUIT , SIG_IGN ) ;
+
+    /* chdir("/") */
+    if ( chdir( "/" ) != 0 ) {
+        printf( "chdir(\"/\") failed: %s" , strerror( errno ) ) ;
+        exit( 1 ) ;
+    }
+
+    /* we want full control over permissions */
+    umask( 0 ) ;
+
+    /* detach stdin */
+    if ( freopen( "/dev/null" , "r" , stdin ) == NULL ) {
+        printf( "freopen (/dev/null) failed: %s" , strerror( errno ) ) ;
+        exit( 1 ) ;
+    }
+
+    /* detach stdout and stderr */
+    fd = open( "/dev/null" , O_WRONLY , 0666 ) ;
+    if ( fd == -1 ) {
+       printf( "open (/dev/null) failed: %s " , strerror( errno ) ) ;
+       exit( 1 ) ;
+    }
+    fflush( stdout ) ;
+    fflush( stderr ) ;
+    dup2( fd, STDOUT_FILENO ) ;
+    dup2( fd, STDERR_FILENO ) ;
+    close( fd ) ;
+#endif
+
     usb_lcd = (peep_instance *)malloc( sizeof ( peep_instance ) ) ;
     if ( usb_lcd == NULL ) {
         printf ( "maby not enouth memory.\n" ) ;

@@ -137,9 +137,6 @@ int ipv4_address( char *address_buffer )
 int sys_boot_time ( char * boot_up_time )
 {
     struct sysinfo info;
-    time_t cur_time = 0;
-    time_t boot_time = 0;
-    struct tm *ptm = NULL;
     if (sysinfo(&info)) {
         fprintf(stderr, "Failed to get sysinfo, errno:%u, reason:%s\n",
                     errno, strerror(errno));
