@@ -18,6 +18,9 @@
 #define NUMB_OF_CHARS_IN_A_LINE 16
 #define NUMB_OF_LINES 2
 
+int godie = 0 ;
+int usb_pending = 0 ;
+
 char ip_addr[INET_ADDRSTRLEN] ;
 
 struct timeval timeout = {
@@ -97,6 +100,7 @@ static int LIBUSB_CALL hotplug_callback( libusb_context *ctx ,
 		libusb_close ( (( peep_instance *)user_data )->lcd_dev->lcd_usb_handle ) ;
 		(( peep_instance *)user_data )->lcd_dev->lcd_usb_handle = NULL ;
 	}
+    usb_pending = 0 ;
     (( peep_instance *)user_data)->speculum_life_cycle = born ;
 	return 0;
 }
@@ -112,7 +116,8 @@ static int LIBUSB_CALL hotplug_callback_detach( libusb_context *ctx ,
 		libusb_close ( (( peep_instance *)user_data )->lcd_dev->lcd_usb_handle ) ;
 		(( peep_instance *)user_data )->lcd_dev->lcd_usb_handle = NULL;
 	}
-    (( peep_instance *)user_data )->speculum_life_cycle = inoculation ;
+    (( peep_instance *)user_data )->speculum_life_cycle = dying ;
+    printf ( " USB pulled out, ready to exit\n" ) ;
 	return 0;
 }
 
@@ -225,21 +230,18 @@ int main( void )
                     }
                     status = -1 ;
                     if (( usb_lcd->desc.idVendor == usb_lcd->lcd_dev->vendor_id ) &&
-                                ( usb_lcd->desc.idProduct == usb_lcd->lcd_dev->device_id ) ) {
+                        ( usb_lcd->desc.idProduct == usb_lcd->lcd_dev->device_id ) ) {
                         printf ("found LCD2USB interface.\n" ) ;
                         usb_lcd->speculum_life_cycle = born ;
+                        usb_pending = 0 ;
                         status = 0 ;
                         break ;
                     }
                 }
                 if ( status < 0 ) {
-
+                    usb_pending = 0 ;
                     usb_lcd->speculum_life_cycle = inoculation ;
                 }
-#if 0
-                printf ( "usb context cached , waiting for speculum plug in...\n" ) ;
-                usb_lcd->speculum_life_cycle = inoculation ;
-#endif
                 break ;
 error:
                 libusb_hotplug_deregister_callback ( usb_lcd->lib_ctx , usb_lcd->hp[0] ) ;
@@ -250,11 +252,14 @@ error:
 
             case inoculation :
                 printf ( "waiting for speculum plug in...\n" ) ;
-                status = libusb_handle_events ( usb_lcd->lib_ctx ) ;
-                /* status = libusb_handle_events_timeout ( usb_lcd->lib_ctx , &timeout ) ; */
-                if ( status < 0 )
-                  printf ( "libusb_handle_events() failed: %s\n", libusb_error_name( status )) ;
-                /* sleep ( 2 ) ; */
+                if ( usb_pending++ < 3 ) {
+                    status = libusb_handle_events ( usb_lcd->lib_ctx ) ;
+                    /* status = libusb_handle_events_timeout ( usb_lcd->lib_ctx , &timeout ) ; */
+                    if ( status < 0 )
+                        printf ( "libusb_handle_events() failed: %s\n", libusb_error_name( status )) ;
+                } else {
+                    usb_lcd->speculum_life_cycle = dying ;
+                }
                 break ;
 
             case born :
@@ -315,12 +320,19 @@ error:
                 lcd_write ( usb_lcd->lcd_dev , "ip address:" ) ;
                 lcd_setpos( usb_lcd->lcd_dev , 0, 1 ) ;
                 lcd_write ( usb_lcd->lcd_dev , second_line ) ;
-                /* sleep(2); */
-                /* sleep(2); */
                 /* status = libusb_handle_events ( usb_lcd->lib_ctx ) ; */
                 status = libusb_handle_events_timeout ( usb_lcd->lib_ctx , &timeout ) ;
                 if ( status < 0 )
                   printf ( "libusb_handle_events() failed: %s\n", libusb_error_name( status )) ;
+                break ;
+
+            case dying:
+                printf ( "LCD module has been pulled out , I`m dying\n" ) ;
+                destory_speculum ( &usb_lcd ) ;
+                libusb_hotplug_deregister_callback ( usb_lcd->lib_ctx , usb_lcd->hp[0] ) ;
+                libusb_hotplug_deregister_callback ( usb_lcd->lib_ctx , usb_lcd->hp[1] ) ;
+                libusb_exit ( usb_lcd->lib_ctx ) ;
+                exit ( 0 ) ;
                 break ;
 
             default :   /* some thing wrong here */
@@ -334,5 +346,4 @@ error:
                 break ;
         }
     } while ( 1 ) ;
-    destory_speculum ( &usb_lcd ) ;
 }

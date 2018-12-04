@@ -37,9 +37,8 @@ enum peep_state {
     inoculation ,
     born ,
     waiting ,
-
-    cached ,
-    connected
+    connected ,
+    dying
 } ;
 
 typedef struct __show_buffer__ {
