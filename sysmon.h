@@ -7,4 +7,5 @@
 float cpu_usage( void ) ;
 float cpu_temp( void ) ;
 int ipv4_address( char * ) ;
+int sys_boot_time ( char * ) ;
 #endif

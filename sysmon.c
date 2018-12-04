@@ -3,9 +3,11 @@
 #include<stdlib.h>
 #include<string.h>
 #include<unistd.h>
+#include <sys/sysinfo.h>
 #include <sys/types.h>
 #include <ifaddrs.h>
 #include <arpa/inet.h>
+#include <errno.h>
 
 #include "sysmon.h"
 float cpu_usage()
@@ -130,5 +132,24 @@ int ipv4_address( char *address_buffer )
     }
     freeifaddrs( if_addr ) ;
     return -1 ;
+}
+
+int sys_boot_time ( char * boot_up_time )
+{
+    struct sysinfo info;
+    time_t cur_time = 0;
+    time_t boot_time = 0;
+    struct tm *ptm = NULL;
+    if (sysinfo(&info)) {
+        fprintf(stderr, "Failed to get sysinfo, errno:%u, reason:%s\n",
+                    errno, strerror(errno));
+        return -1;
+    }
+    int h , m , s ;
+    h = info.uptime / 3600 ;
+    m = ( info.uptime - ( h * 3600 )) / 60 ;
+    s = ( info.uptime - ( h * 3600 ) - ( m * 60 )) ;
+    snprintf ( boot_up_time , 16 , "%6dh %02dm %02ds\n" , h , m , s ) ;
+    return 0;
 }
 

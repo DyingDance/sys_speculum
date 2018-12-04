@@ -16,7 +16,7 @@
 char ip_addr[INET_ADDRSTRLEN] ;
 
 struct timeval timeout = {
-    .tv_sec = 1 ,
+    .tv_sec = 3 ,
     .tv_usec = 0 ,
 } ;
 
@@ -225,6 +225,14 @@ error:
 
             case connected:
                 printf ( "waiting for speculum pull out...\n" ) ;
+                if ( sys_boot_time ( second_line ) == 0 ) {
+                    lcd_clear_scr( usb_lcd->lcd_dev ) ;
+                    lcd_setpos( usb_lcd->lcd_dev , 0, 0);
+                    lcd_write ( usb_lcd->lcd_dev , "system boot up:" ) ;
+                    lcd_setpos( usb_lcd->lcd_dev , 0, 1 ) ;
+                    lcd_write ( usb_lcd->lcd_dev , second_line ) ;
+                }
+                sleep( 3 ) ;
                 snprintf (first_line , NUMB_OF_CHARS_IN_A_LINE+1 , "cpu load: %3.2f%%" , cpu_usage() ) ;
                 snprintf (second_line , NUMB_OF_CHARS_IN_A_LINE+1 , "cpu temp: %2.2f digC" , cpu_temp() ) ;
                 lcd_clear_scr( usb_lcd->lcd_dev ) ;
@@ -232,8 +240,7 @@ error:
                 lcd_write ( usb_lcd->lcd_dev , first_line ) ;
                 lcd_setpos( usb_lcd->lcd_dev , 0, 1) ;
                 lcd_write ( usb_lcd->lcd_dev , second_line ) ;
-                sleep( 2 ) ;
-                sleep( 2 ) ;
+                sleep( 3 ) ;
                 if ( ipv4_address ( ip_addr ) == 0 ) {
                     snprintf ( second_line , NUMB_OF_CHARS_IN_A_LINE+1 , ip_addr ) ;
                 } else {
@@ -241,7 +248,7 @@ error:
                 }
                 lcd_clear_scr( usb_lcd->lcd_dev ) ;
                 lcd_setpos( usb_lcd->lcd_dev , 0, 0);
-                lcd_write ( usb_lcd->lcd_dev , "ip address" ) ;
+                lcd_write ( usb_lcd->lcd_dev , "ip address:" ) ;
                 lcd_setpos( usb_lcd->lcd_dev , 0, 1 ) ;
                 lcd_write ( usb_lcd->lcd_dev , second_line ) ;
                 /* sleep(2); */
