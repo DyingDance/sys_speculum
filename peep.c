@@ -226,6 +226,7 @@ int main( void )
                     status = libusb_get_device_descriptor ( usb_lcd->dev , &( usb_lcd->desc ) ) ;
                     if ( status < 0 ) {
                         printf ("falied to get device descriptor\n" ) ;
+                        libusb_free_device_list( usb_lcd->devs , 1 ) ;
                         goto error ;
                     }
                     status = -1 ;
@@ -238,6 +239,7 @@ int main( void )
                         break ;
                     }
                 }
+                libusb_free_device_list( usb_lcd->devs , 1 ) ;
                 if ( status < 0 ) {
                     usb_pending = 0 ;
                     usb_lcd->speculum_life_cycle = inoculation ;
